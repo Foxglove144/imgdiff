@@ -6,7 +6,6 @@ include set*/*.png
 include .gitignore
 include tests.py
 include .coveragerc
-include .travis.yml
 include tox.ini
 
 # added by check_manifest.py
