@@ -215,6 +215,25 @@ def main(argv=None):
     img1 = Image.open(file1).convert("RGB")
     img2 = Image.open(file2).convert("RGB")
 
+    # If the images have different resolutions, resize the smaller
+    # image up to the larger image using Lanczos resampling.
+    if img1.size != img2.size:
+        w1, h1 = img1.size
+        w2, h2 = img2.size
+        # choose the target as the image with larger area
+        if w1 * h1 < w2 * h2:
+            try:
+                resample_filter = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample_filter = Image.LANCZOS
+            img1 = img1.resize((w2, h2), resample=resample_filter)
+        else:
+            try:
+                resample_filter = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample_filter = Image.LANCZOS
+            img2 = img2.resize((w1, h1), resample=resample_filter)
+
     if opts.smart_highlight:
         mask1, mask2, diff = slow_highlight(img1, img2, opts)
     elif opts.highlight:
