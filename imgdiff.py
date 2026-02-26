@@ -198,6 +198,15 @@ def main(argv=None):
         help="border around images (default: %default pixels)",
     )
 
+    parser.add_option(
+        "-r",
+        "--resize",
+        action="store_true",
+        dest="resize",
+        default=False,
+        help="resize the smaller image to match the larger using Lanczos",
+    )
+
     opts, args = parser.parse_args(args)
 
     if len(args) != 2:
@@ -215,9 +224,8 @@ def main(argv=None):
     img1 = Image.open(file1).convert("RGB")
     img2 = Image.open(file2).convert("RGB")
 
-    # If the images have different resolutions, resize the smaller
-    # image up to the larger image using Lanczos resampling.
-    if img1.size != img2.size:
+    # Optionally resize the smaller image to match the larger using Lanczos
+    if getattr(opts, "resize", False) and img1.size != img2.size:
         w1, h1 = img1.size
         w2, h2 = img2.size
         # choose the target as the image with larger area
