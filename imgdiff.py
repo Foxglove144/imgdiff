@@ -1,9 +1,4 @@
 #!/usr/bin/python
-"""
-imgdiff by Marius Gedminas <marius@gedmin.as>
-
-Released under the MIT licence.
-"""
 
 import optparse
 import os
@@ -13,19 +8,10 @@ import sys
 import tempfile
 import time
 
-# There are two ways PIL used to be packaged
-try:
-    from PIL import Image, ImageChops, ImageDraw, ImageFilter
-except ImportError:
-    # This is the old way, and probably nobody uses it anymore.  (PIL's dead
-    # anyway, Pillow supplanted it.)
-    import Image
-    import ImageChops
-    import ImageDraw
-    import ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 
-__version__ = '1.9.0.dev0'
+__version__ = "1.9.0.dev0"
 
 
 def parse_color(color):
@@ -46,7 +32,7 @@ def parse_color(color):
     Raises ValueError on errors.
     """
     if len(color) not in (3, 4, 6, 8):
-        raise ValueError('bad color %s' % repr(color))
+        raise ValueError("bad color %s" % repr(color))
     if len(color) in (3, 4):
         r = int(color[0], 16) * 0x11
         g = int(color[1], 16) * 0x11
@@ -60,7 +46,7 @@ def parse_color(color):
     elif len(color) == 8:
         a = int(color[6:8], 16)
     else:
-        a = 0xff
+        a = 0xFF
     return (r, g, b, a)
 
 
@@ -76,12 +62,13 @@ def check_color(option, opt, value):
     try:
         return parse_color(value)
     except ValueError:
-        raise optparse.OptionValueError("option %s: invalid color value: %r"
-                                         % (opt, value))
+        raise optparse.OptionValueError(
+            "option %s: invalid color value: %r" % (opt, value)
+        )
 
 
 class MyOption(optparse.Option):
-    TYPES = optparse.Option.TYPES + ("color", )
+    TYPES = optparse.Option.TYPES + ("color",)
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER["color"] = check_color
 
@@ -92,59 +79,134 @@ def main(argv=None):
         prog = os.path.basename(sys.argv[0])
         args = argv[1:]
 
-    parser = optparse.OptionParser('%prog [options] image1 image2',
-                description='Compare two images side-by-side',
-                option_class=MyOption, prog=prog)
+    parser = optparse.OptionParser(
+        "%prog [options] image1 image2",
+        description="Compare two images side-by-side",
+        option_class=MyOption,
+        prog=prog,
+    )
 
-    parser.add_option('-o', dest='outfile',
-                      help='write the combined image to a file')
-    parser.add_option('--viewer', default='builtin', metavar='COMMAND',
-                      help='use an external image viewer (default: %default)')
-    parser.add_option('--eog', action='store_const', dest='viewer', const='eog',
-                      help='use Eye of Gnome (same as --viewer eog)')
-    parser.add_option('--grace', type='int', default=1.0, metavar='SECONDS',
-                      help='seconds to wait before removing temporary file'
-                           ' when using an external viewer (default: %default)')
+    parser.add_option("-o", dest="outfile", help="write the combined image to a file")
+    parser.add_option(
+        "--viewer",
+        default="builtin",
+        metavar="COMMAND",
+        help="use an external image viewer (default: %default)",
+    )
+    parser.add_option(
+        "--eog",
+        action="store_const",
+        dest="viewer",
+        const="eog",
+        help="use Eye of Gnome (same as --viewer eog)",
+    )
+    parser.add_option(
+        "--grace",
+        type="int",
+        default=1.0,
+        metavar="SECONDS",
+        help="seconds to wait before removing temporary file"
+        " when using an external viewer (default: %default)",
+    )
 
-    parser.add_option('-H', '--highlight', action='store_true',
-                      help='highlight differences (EXPERIMENTAL)')
-    parser.add_option('-S', '--smart-highlight', action='store_true',
-                      help='highlight differences in a smarter way (EXPERIMENTAL)')
-    parser.add_option('--opacity', type='int', default='64',
-                      help='opacity of similar areas for -H/-S'
-                           ' (range: 0..255, default %default)')
-    parser.add_option('--timeout', type='float', default='10',
-                      help='skip highlighting if it takes too long'
-                           ' (default: %default seconds)')
+    parser.add_option(
+        "-H",
+        "--highlight",
+        action="store_true",
+        default=False,
+        help="highlight differences (EXPERIMENTAL)",
+    )
+    parser.add_option(
+        "-S",
+        "--smart-highlight",
+        default=True,
+        action="store_true",
+        help="highlight differences in a smarter way (EXPERIMENTAL)",
+    )
+    parser.add_option(
+        "--opacity",
+        type="int",
+        default="64",
+        help="opacity of similar areas for -H/-S" " (range: 0..255, default %default)",
+    )
+    parser.add_option(
+        "--timeout",
+        type="float",
+        default="300",
+        help="skip highlighting if it takes too long" " (default: %default seconds)",
+    )
+    parser.add_option(
+        "-t",
+        "--diff-threshold",
+        type="int",
+        default=20,
+        metavar="N",
+        help="threshold for detecting differences for bounding boxes (range: 0..255, default: %default)",
+    )
 
-    parser.add_option('--auto', action='store_const', const='auto',
-                      dest='orientation', default='auto',
-                      help='pick orientation automatically (default)')
-    parser.add_option('--lr', '--left-right', action='store_const', const='lr',
-                      dest='orientation',
-                      help='force orientation to left-and-right')
-    parser.add_option('--tb', '--top-bottom', action='store_const', const='tb',
-                      dest='orientation',
-                      help='force orientation to top-and-bottom')
+    parser.add_option(
+        "--auto",
+        action="store_const",
+        const="auto",
+        dest="orientation",
+        default="auto",
+        help="pick orientation automatically (default)",
+    )
+    parser.add_option(
+        "--lr",
+        "--left-right",
+        action="store_const",
+        const="lr",
+        dest="orientation",
+        help="force orientation to left-and-right",
+    )
+    parser.add_option(
+        "--tb",
+        "--top-bottom",
+        action="store_const",
+        const="tb",
+        dest="orientation",
+        help="force orientation to top-and-bottom",
+    )
 
-    parser.add_option('--bgcolor', default='fff', type='color', metavar='RGB',
-                      help='background color (default: %default)')
-    parser.add_option('--sepcolor', default='ccc', type='color', metavar='RGB',
-                      help='separator line color (default: %default)')
-    parser.add_option('--spacing', type='int', default=3, metavar='N',
-                      help='spacing between images (default: %default pixels)')
-    parser.add_option('--border', type='int', default=0, metavar='N',
-                      help='border around images (default: %default pixels)')
+    parser.add_option(
+        "--bgcolor",
+        default="fff",
+        type="color",
+        metavar="RGB",
+        help="background color (default: %default)",
+    )
+    parser.add_option(
+        "--sepcolor",
+        default="ccc",
+        type="color",
+        metavar="RGB",
+        help="separator line color (default: %default)",
+    )
+    parser.add_option(
+        "--spacing",
+        type="int",
+        default=3,
+        metavar="N",
+        help="spacing between images (default: %default pixels)",
+    )
+    parser.add_option(
+        "--border",
+        type="int",
+        default=0,
+        metavar="N",
+        help="border around images (default: %default pixels)",
+    )
 
     opts, args = parser.parse_args(args)
 
     if len(args) != 2:
-        parser.error('expecting two arguments, got %d' % len(args))
+        parser.error("expecting two arguments, got %d" % len(args))
 
     file1, file2 = args
 
     if os.path.isdir(file1) and os.path.isdir(file2):
-        parser.error('at least one argument must be a file, not a directory')
+        parser.error("at least one argument must be a file, not a directory")
     if os.path.isdir(file2):
         file2 = os.path.join(file2, os.path.basename(file1))
     elif os.path.isdir(file1):
@@ -154,21 +216,22 @@ def main(argv=None):
     img2 = Image.open(file2).convert("RGB")
 
     if opts.smart_highlight:
-        mask1, mask2 = slow_highlight(img1, img2, opts)
+        mask1, mask2, diff = slow_highlight(img1, img2, opts)
     elif opts.highlight:
-        mask1, mask2 = simple_highlight(img1, img2, opts)
+        mask1, mask2, diff = simple_highlight(img1, img2, opts)
     else:
-        mask1 = mask2 = None
+        mask1 = mask2 = diff = None
+
+    opts.diff = diff  # pass the diff to tile_images for drawing bounding box
 
     img = tile_images(img1, img2, mask1, mask2, opts)
 
     if opts.outfile:
         img.save(opts.outfile)
-    elif opts.viewer == 'builtin':
+    elif opts.viewer == "builtin":
         img.show()
     else:
-        name = '%s-vs-%s.png' % (os.path.basename(file1),
-                                 os.path.basename(file2))
+        name = "%s-vs-%s.png" % (os.path.basename(file1), os.path.basename(file2))
         spawn_viewer(opts.viewer, img, name, grace=opts.grace)
 
 
@@ -192,48 +255,110 @@ def pick_orientation(img1, img2, spacing, desired_aspect=1.618):
     goodness_a = min(desired_aspect, aspect_a) / max(desired_aspect, aspect_a)
     goodness_b = min(desired_aspect, aspect_b) / max(desired_aspect, aspect_b)
 
-    return 'lr' if goodness_a >= goodness_b else 'tb'
+    return "lr" if goodness_a >= goodness_b else "tb"
+
+
+def find_bounding_boxes(diff_img, threshold=0):
+    """
+    Return a list of bounding boxes for each connected difference region.
+    Uses simple flood-fill to identify connected components.
+    Returns list of (left, top, right, bottom) tuples.
+    """
+
+    diff = diff_img.copy()
+    diff = diff.point(lambda x: 255 if x > threshold else 0)  # binary
+    pixels = diff.load()
+    w, h = diff.size
+    visited = set()
+    boxes = []
+
+    def neighbors(x, y):
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < w and 0 <= ny < h:
+                yield nx, ny
+
+    for y in range(h):
+        for x in range(w):
+            if pixels[x, y] != 0 and (x, y) not in visited:
+                # start flood fill
+                stack = [(x, y)]
+                visited.add((x, y))
+                minx = maxx = x
+                miny = maxy = y
+
+                while stack:
+                    cx, cy = stack.pop()
+                    for nx, ny in neighbors(cx, cy):
+                        if pixels[nx, ny] != 0 and (nx, ny) not in visited:
+                            visited.add((nx, ny))
+                            stack.append((nx, ny))
+                            minx = min(minx, nx)
+                            miny = min(miny, ny)
+                            maxx = max(maxx, nx)
+                            maxy = max(maxy, ny)
+
+                # store bounding box
+                boxes.append((minx, miny, maxx, maxy))
+
+    return boxes
 
 
 def tile_images(img1, img2, mask1, mask2, opts):
-    """Combine two images into one by tiling them.
+    """Combine two images and draw multiple bounding boxes for differences."""
 
-    ``mask1`` and ``mask2`` provide optional masks for alpha-blending;
-    pass None to avoid.
+    from PIL import ImageDraw
 
-    Fills unused areas with ``opts.bgcolor``.
-
-    Puts a ``opts.spacing``-wide bar with a thin line of ``opts.sepcolor``
-    color between them.
-
-    ``opts.orientation`` can be 'lr' for left-and-right, 'tb' for
-    top-and-bottom, or 'auto' for automatic.
-    """
     w1, h1 = img1.size
     w2, h2 = img2.size
 
-    if opts.orientation == 'auto':
+    # Determine orientation
+    if opts.orientation == "auto":
         opts.orientation = pick_orientation(img1, img2, opts.spacing)
 
     B, S = opts.border, opts.spacing
 
-    if opts.orientation == 'lr':
+    if opts.orientation == "lr":
         w, h = (B + w1 + S + w2 + B, B + max(h1, h2) + B)
         pos1 = (B, (h - h1) // 2)
         pos2 = (B + w1 + S, (h - h2) // 2)
-        separator_line = [(B + w1 + S//2, 0), (B + w1 + S//2, h)]
+        separator_line = [(B + w1 + S // 2, 0), (B + w1 + S // 2, h)]
     else:
         w, h = (B + max(w1, w2) + B, B + h1 + S + h2 + B)
         pos1 = ((w - w1) // 2, B)
         pos2 = ((w - w2) // 2, B + h1 + S)
-        separator_line = [(0, B + h1 + S//2), (w, B + h1 + S//2)]
+        separator_line = [(0, B + h1 + S // 2), (w, B + h1 + S // 2)]
 
-    img = Image.new('RGBA', (w, h), opts.bgcolor)
+    img = Image.new("RGBA", (w, h), opts.bgcolor)
 
     img.paste(img1, pos1, mask1)
     img.paste(img2, pos2, mask2)
 
-    ImageDraw.Draw(img).line(separator_line, fill=opts.sepcolor)
+    draw = ImageDraw.Draw(img)
+    draw.line(separator_line, fill=opts.sepcolor)
+
+    # ----------------------------------------------------------------------
+    #            NEW: MULTIPLE BOUNDING BOXES AROUND DIFFERENCES
+    # ----------------------------------------------------------------------
+    if hasattr(opts, "diff") and opts.diff is not None:
+        boxes = find_bounding_boxes(opts.diff, opts.diff_threshold)
+
+        pad = 3
+        for left, top, right, bottom in boxes:
+            left -= pad
+            top -= pad
+            right += pad
+            bottom += pad
+
+            # left/bottom image
+            box1 = (pos1[0] + left, pos1[1] + top, pos1[0] + right, pos1[1] + bottom)
+
+            # right/top image
+            box2 = (pos2[0] + left, pos2[1] + top, pos2[0] + right, pos2[1] + bottom)
+
+            draw.rectangle(box1, outline="red", width=3)
+            draw.rectangle(box2, outline="red", width=3)
+    # ----------------------------------------------------------------------
 
     return img
 
@@ -252,7 +377,7 @@ def spawn_viewer(viewer, img, filename, grace):
     before removing the temporary file.  Useful if your viewer forks
     into background before it opens the file.
     """
-    tempdir = tempfile.mkdtemp(prefix='imgdiff-')
+    tempdir = tempfile.mkdtemp(prefix="imgdiff-")
     try:
         imgfile = os.path.join(tempdir, filename)
         img.save(imgfile)
@@ -346,9 +471,10 @@ def diff(img1, img2, x1y1, x2y2):
     w1, h1 = img1.size
     w2, h2 = img2.size
     w, h = min(w1, w2), min(h1, h2)
-    diff = ImageChops.difference(img1.crop((x1, y1, x1+w, y1+h)),
-                                 img2.crop((x2, y2, x2+w, y2+h)))
-    diff = diff.convert('L')
+    diff = ImageChops.difference(
+        img1.crop((x1, y1, x1 + w, y1 + h)), img2.crop((x2, y2, x2 + w, y2 + h))
+    )
+    diff = diff.convert("L")
     return diff
 
 
@@ -374,7 +500,7 @@ class Timeout(KeyboardInterrupt):
 
 class Progress(object):
 
-    def __init__(self, total, delay=1.0, timeout=10.0, what='possible alignments'):
+    def __init__(self, total, delay=1.0, timeout=10.0, what="possible alignments"):
         self.started = time.time()
         self.delay = delay
         self.total = total
@@ -387,14 +513,14 @@ class Progress(object):
 
     def _say_if_terminal(self, msg):
         if self.isatty:
-            self.stream.write('\r')
+            self.stream.write("\r")
             self.stream.write(msg)
             self.stream.flush()
             self.shown = True
 
     def _say(self, msg):
         if self.isatty:
-            self.stream.write('\r')
+            self.stream.write("\r")
         self.stream.write(msg)
         self.stream.flush()
         self.shown = True
@@ -402,19 +528,27 @@ class Progress(object):
     def next(self):
         self.position += 1
         if self.timeout and time.time() - self.started > self.timeout:
-            self._say('Highlighting takes too long: timed out after %.0f seconds'
-                      % self.timeout)
+            self._say(
+                "Highlighting takes too long: timed out after %.0f seconds"
+                % self.timeout
+            )
             raise Timeout
         if time.time() - self.started >= self.delay:
-            self._say_if_terminal('%d%% (%d out of %d %s)'
-                                  % (self.position * 100 // self.total,
-                                     self.position, self.total, self.what))
+            self._say_if_terminal(
+                "%d%% (%d out of %d %s)"
+                % (
+                    self.position * 100 // self.total,
+                    self.position,
+                    self.total,
+                    self.what,
+                )
+            )
         if self.position == self.total:
             self.done()
 
     def done(self):
         if self.shown:
-            self._say('\n')
+            self._say("\n")
             self.shown = False
 
 
@@ -470,18 +604,25 @@ def simple_highlight(img1, img2, opts):
     try:
         diff, ((x1, y1), (x2, y2)) = best_diff(img1, img2, opts)
     except KeyboardInterrupt:
-        return None, None
-    diff = diff.filter(ImageFilter.MaxFilter(9))
+        return None, None, None
+    if diff is not None:
+        diff = diff.filter(ImageFilter.MaxFilter(9))
+        # Keep the raw diff for bounding box calculation
+        raw_diff = Image.new("L", img1.size, 0xFF)
+        raw_diff.paste(diff, (x1, y1))
+    else:
+        raw_diff = Image.new("L", img1.size, 0xFF)
+
     diff = tweak_diff(diff, opts.opacity)
     # If the images have different sizes, the areas outside the alignment
     # zone are considered to be dissimilar -- filling them with 0xff.
     # Perhaps it would be better to compare those bits with bars of solid
     # color, filled with opts.bgcolor?
-    mask1 = Image.new('L', img1.size, 0xff)
-    mask2 = Image.new('L', img2.size, 0xff)
+    mask1 = Image.new("L", img1.size, 0xFF)
+    mask2 = Image.new("L", img2.size, 0xFF)
     mask1.paste(diff, (x1, y1))
     mask2.paste(diff, (x2, y2))
-    return mask1, mask2
+    return mask1, mask2, raw_diff
 
 
 def slow_highlight(img1, img2, opts):
@@ -510,53 +651,63 @@ def slow_highlight(img1, img2, opts):
     w2, h2 = img2.size
     W, H = max(w1, w2), max(h1, h2)
 
-    pimg1 = Image.new('RGB', (W, H), opts.bgcolor)
-    pimg2 = Image.new('RGB', (W, H), opts.bgcolor)
+    pimg1 = Image.new("RGB", (W, H), opts.bgcolor)
+    pimg2 = Image.new("RGB", (W, H), opts.bgcolor)
 
     pimg1.paste(img1, (0, 0))
     pimg2.paste(img2, (0, 0))
 
-    diff = Image.new('L', (W, H), 255)
-    # It is not a good idea to keep one diff image; it should track the
-    # relative positions of the two images.  I think that's what explains
-    # the fuzz I see near the edges of the different areas.
+    diff1 = Image.new("L", (w1, h1), 255)
+    diff2 = Image.new("L", (w2, h2), 255)
 
     xr = abs(w1 - w2) + 1
     yr = abs(h1 - h2) + 1
 
     try:
         p = Progress(xr * yr, timeout=opts.timeout)
+        off1_x = off1_y = 0
+        off2_x = off2_y = 0
         for x in range(xr):
+            off1_y = 0
+            off2_y = 0
             for y in range(yr):
                 p.next()
-                this = ImageChops.difference(pimg1, pimg2).convert('L')
+                this = ImageChops.difference(pimg1, pimg2).convert("L")
                 this = this.filter(ImageFilter.MaxFilter(7))
-                diff = ImageChops.darker(diff, this)
+
+                d1 = this.crop((off1_x, off1_y, off1_x + w1, off1_y + h1))
+                diff1 = ImageChops.darker(diff1, d1)
+
+                d2 = this.crop((off2_x, off2_y, off2_x + w2, off2_y + h2))
+                diff2 = ImageChops.darker(diff2, d2)
+
                 if h1 > h2:
                     pimg2 = ImageChops.offset(pimg2, 0, 1)
+                    off2_y += 1
                 else:
                     pimg1 = ImageChops.offset(pimg1, 0, 1)
+                    off1_y += 1
             if h1 > h2:
                 pimg2 = ImageChops.offset(pimg2, 0, -yr)
             else:
                 pimg1 = ImageChops.offset(pimg1, 0, -yr)
             if w1 > w2:
                 pimg2 = ImageChops.offset(pimg2, 1, 0)
+                off2_x += 1
             else:
                 pimg1 = ImageChops.offset(pimg1, 1, 0)
+                off1_x += 1
     except KeyboardInterrupt:
-        return None, None
+        return None, None, None
 
-    diff = diff.filter(ImageFilter.MaxFilter(5))
-
-    diff1 = diff.crop((0, 0, w1, h1))
-    diff2 = diff.crop((0, 0, w2, h2))
+    diff1 = diff1.filter(ImageFilter.MaxFilter(9))
+    diff2 = diff2.filter(ImageFilter.MaxFilter(9))
 
     mask1 = tweak_diff(diff1, opts.opacity)
     mask2 = tweak_diff(diff2, opts.opacity)
 
-    return mask1, mask2
+    return mask1, mask2, diff1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
