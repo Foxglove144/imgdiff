@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import optparse
+import argparse
 import os
 import shutil
 import subprocess
@@ -50,27 +50,12 @@ def parse_color(color):
     return (r, g, b, a)
 
 
-def check_color(option, opt, value):
-    """Validate and convert an option value of type 'color'.
-
-    ``option`` is an optparse.Option instance.
-
-    ``opt`` is a string with the user-supplied option name (e.g. '--bgcolor').
-
-    ``value`` is the user-supplied value.
-    """
+def parse_color_option(parser, opt, value):
+    """Validate and convert a color option value."""
     try:
         return parse_color(value)
     except ValueError:
-        raise optparse.OptionValueError(
-            "option %s: invalid color value: %r" % (opt, value)
-        )
-
-
-class MyOption(optparse.Option):
-    TYPES = optparse.Option.TYPES + ("color",)
-    TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
-    TYPE_CHECKER["color"] = check_color
+        parser.error("option %s: invalid color value: %r" % (opt, value))
 
 
 def main(argv=None):
@@ -79,72 +64,75 @@ def main(argv=None):
         prog = os.path.basename(sys.argv[0])
         args = argv[1:]
 
-    parser = optparse.OptionParser(
-        "%prog [options] image1 image2",
+    parser = argparse.ArgumentParser(
+        usage="%(prog)s [options] image1 image2",
         description="Compare two images side-by-side",
-        option_class=MyOption,
         prog=prog,
     )
 
-    parser.add_option("-o", dest="outfile", help="write the combined image to a file")
-    parser.add_option(
+    parser.add_argument(
+        "-o", dest="outfile", help="write the combined image to a file"
+    )
+    parser.add_argument(
         "--viewer",
         default="builtin",
         metavar="COMMAND",
-        help="use an external image viewer (default: %default)",
+        help="use an external image viewer (default: %(default)s)",
     )
-    parser.add_option(
+    parser.add_argument(
         "--eog",
         action="store_const",
         dest="viewer",
         const="eog",
         help="use Eye of Gnome (same as --viewer eog)",
     )
-    parser.add_option(
+    parser.add_argument(
         "--grace",
-        type="int",
+        type=int,
         default=1.0,
         metavar="SECONDS",
         help="seconds to wait before removing temporary file"
-        " when using an external viewer (default: %default)",
+        " when using an external viewer (default: %(default)s)",
     )
 
-    parser.add_option(
+    parser.add_argument(
         "-H",
         "--highlight",
         action="store_true",
         default=False,
         help="highlight differences (EXPERIMENTAL)",
     )
-    parser.add_option(
+    parser.add_argument(
         "-S",
         "--smart-highlight",
         default=True,
         action="store_true",
         help="highlight differences in a smarter way (EXPERIMENTAL)",
     )
-    parser.add_option(
+    parser.add_argument(
         "--opacity",
-        type="int",
-        default="64",
-        help="opacity of similar areas for -H/-S" " (range: 0..255, default %default)",
+        type=int,
+        default=64,
+        help="opacity of similar areas for -H/-S"
+        " (range: 0..255, default %(default)s)",
     )
-    parser.add_option(
+    parser.add_argument(
         "--timeout",
-        type="float",
-        default="300",
-        help="skip highlighting if it takes too long" " (default: %default seconds)",
+        type=float,
+        default=300.0,
+        help="skip highlighting if it takes too long"
+        " (default: %(default)s seconds)",
     )
-    parser.add_option(
+    parser.add_argument(
         "-t",
         "--diff-threshold",
-        type="int",
+        type=int,
         default=20,
         metavar="N",
-        help="threshold for detecting differences for bounding boxes (range: 0..255, default: %default)",
+        help="threshold for detecting differences for bounding boxes (range: 0..255, default: %(default)s)",
     )
 
-    parser.add_option(
+    parser.add_argument(
         "--auto",
         action="store_const",
         const="auto",
@@ -152,7 +140,7 @@ def main(argv=None):
         default="auto",
         help="pick orientation automatically (default)",
     )
-    parser.add_option(
+    parser.add_argument(
         "--lr",
         "--left-right",
         action="store_const",
@@ -160,7 +148,7 @@ def main(argv=None):
         dest="orientation",
         help="force orientation to left-and-right",
     )
-    parser.add_option(
+    parser.add_argument(
         "--tb",
         "--top-bottom",
         action="store_const",
@@ -169,36 +157,34 @@ def main(argv=None):
         help="force orientation to top-and-bottom",
     )
 
-    parser.add_option(
+    parser.add_argument(
         "--bgcolor",
         default="fff",
-        type="color",
         metavar="RGB",
-        help="background color (default: %default)",
+        help="background color (default: %(default)s)",
     )
-    parser.add_option(
+    parser.add_argument(
         "--sepcolor",
         default="ccc",
-        type="color",
         metavar="RGB",
-        help="separator line color (default: %default)",
+        help="separator line color (default: %(default)s)",
     )
-    parser.add_option(
+    parser.add_argument(
         "--spacing",
-        type="int",
+        type=int,
         default=3,
         metavar="N",
-        help="spacing between images (default: %default pixels)",
+        help="spacing between images (default: %(default)s pixels)",
     )
-    parser.add_option(
+    parser.add_argument(
         "--border",
-        type="int",
+        type=int,
         default=0,
         metavar="N",
-        help="border around images (default: %default pixels)",
+        help="border around images (default: %(default)s pixels)",
     )
 
-    parser.add_option(
+    parser.add_argument(
         "-r",
         "--resize",
         action="store_true",
@@ -207,10 +193,15 @@ def main(argv=None):
         help="resize the smaller image to match the larger using Lanczos",
     )
 
-    opts, args = parser.parse_args(args)
+    parser.add_argument("images", nargs="*")
+    opts = parser.parse_args(args)
+    args = opts.images
 
     if len(args) != 2:
         parser.error("expecting two arguments, got %d" % len(args))
+
+    opts.bgcolor = parse_color_option(parser, "--bgcolor", opts.bgcolor)
+    opts.sepcolor = parse_color_option(parser, "--sepcolor", opts.sepcolor)
 
     file1, file2 = args
 
@@ -678,11 +669,13 @@ def slow_highlight(img1, img2, opts):
     w2, h2 = img2.size
     W, H = max(w1, w2), max(h1, h2)
 
-    pimg1 = Image.new("RGB", (W, H), opts.bgcolor)
-    pimg2 = Image.new("RGB", (W, H), opts.bgcolor)
-
-    pimg1.paste(img1, (0, 0))
-    pimg2.paste(img2, (0, 0))
+    # Work in grayscale from the start so we avoid RGB->L conversion
+    # for every possible alignment.
+    bg_luma = Image.new("RGBA", (1, 1), opts.bgcolor).convert("L").getpixel((0, 0))
+    pimg1 = Image.new("L", (W, H), bg_luma)
+    pimg2 = Image.new("L", (W, H), bg_luma)
+    pimg1.paste(img1.convert("L"), (0, 0))
+    pimg2.paste(img2.convert("L"), (0, 0))
 
     diff1 = Image.new("L", (w1, h1), 255)
     diff2 = Image.new("L", (w2, h2), 255)
@@ -692,6 +685,7 @@ def slow_highlight(img1, img2, opts):
 
     try:
         p = Progress(xr * yr, timeout=opts.timeout)
+        max7 = ImageFilter.MaxFilter(7)
         off1_x = off1_y = 0
         off2_x = off2_y = 0
         for x in range(xr):
@@ -699,8 +693,8 @@ def slow_highlight(img1, img2, opts):
             off2_y = 0
             for y in range(yr):
                 p.next()
-                this = ImageChops.difference(pimg1, pimg2).convert("L")
-                this = this.filter(ImageFilter.MaxFilter(7))
+                this = ImageChops.difference(pimg1, pimg2)
+                this = this.filter(max7)
 
                 d1 = this.crop((off1_x, off1_y, off1_x + w1, off1_y + h1))
                 diff1 = ImageChops.darker(diff1, d1)
@@ -727,8 +721,9 @@ def slow_highlight(img1, img2, opts):
     except KeyboardInterrupt:
         return None, None, None
 
-    diff1 = diff1.filter(ImageFilter.MaxFilter(9))
-    diff2 = diff2.filter(ImageFilter.MaxFilter(9))
+    max9 = ImageFilter.MaxFilter(9)
+    diff1 = diff1.filter(max9)
+    diff2 = diff2.filter(max9)
 
     mask1 = tweak_diff(diff1, opts.opacity)
     mask2 = tweak_diff(diff2, opts.opacity)
