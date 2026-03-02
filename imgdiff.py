@@ -70,9 +70,7 @@ def main(argv=None):
         prog=prog,
     )
 
-    parser.add_argument(
-        "-o", dest="outfile", help="write the combined image to a file"
-    )
+    parser.add_argument("-o", dest="outfile", help="write the combined image to a file")
     parser.add_argument(
         "--viewer",
         default="builtin",
@@ -120,8 +118,7 @@ def main(argv=None):
         "--timeout",
         type=float,
         default=300.0,
-        help="skip highlighting if it takes too long"
-        " (default: %(default)s seconds)",
+        help="skip highlighting if it takes too long" " (default: %(default)s seconds)",
     )
     parser.add_argument(
         "-t",
@@ -189,7 +186,7 @@ def main(argv=None):
         "--resize",
         action="store_true",
         dest="resize",
-        default=False,
+        default=True,
         help="resize the smaller image to match the larger using Lanczos",
     )
 
