@@ -515,7 +515,23 @@ class Timeout(KeyboardInterrupt):
 
 class Progress(object):
 
-    def __init__(self, total, delay=1.0, timeout=10.0, what="possible alignments"):
+    def __init__(
+        self,
+        total,
+        delay=1.0,
+        timeout=10.0,
+        what="possible alignments",
+        cancel_event=None,
+        gui_callback=None,
+    ):
+        """Progress reporter.
+
+        New parameters:
+        - cancel_event: optional threading.Event() instance; if set, progress
+          will raise Timeout to abort operations.
+        - gui_callback: optional callable(percent:int) used to report percent
+          progress to a GUI (0..100).
+        """
         self.started = time.time()
         self.delay = delay
         self.total = total
@@ -524,7 +540,13 @@ class Progress(object):
         self.shown = False
         self.timeout = timeout
         self.stream = sys.stderr
-        self.isatty = self.stream.isatty()
+        # some environments may not have isatty
+        try:
+            self.isatty = self.stream.isatty()
+        except Exception:
+            self.isatty = False
+        self.cancel_event = cancel_event
+        self.gui_callback = gui_callback
 
     def _say_if_terminal(self, msg):
         if self.isatty:
@@ -532,6 +554,17 @@ class Progress(object):
             self.stream.write(msg)
             self.stream.flush()
             self.shown = True
+        # Also report to GUI callback when available so GUI matches terminal
+        if self.gui_callback is not None and self.total:
+            try:
+                percent = int(self.position * 100 // self.total)
+                try:
+                    # pass both percent and textual message so GUI can show both
+                    self.gui_callback({"percent": percent, "msg": msg})
+                except Exception:
+                    pass
+            except Exception:
+                pass
 
     def _say(self, msg):
         if self.isatty:
@@ -539,8 +572,26 @@ class Progress(object):
         self.stream.write(msg)
         self.stream.flush()
         self.shown = True
+        # report to GUI callback as well
+        if self.gui_callback is not None and self.total:
+            try:
+                percent = int(self.position * 100 // self.total)
+                try:
+                    self.gui_callback({"percent": percent, "msg": msg})
+                except Exception:
+                    pass
+            except Exception:
+                pass
 
     def next(self):
+        # check external cancel first
+        if (
+            self.cancel_event is not None
+            and getattr(self.cancel_event, "is_set", lambda: False)()
+        ):
+            # signal cancellation via Timeout exception
+            raise Timeout
+
         self.position += 1
         if self.timeout and time.time() - self.started > self.timeout:
             self._say(
@@ -548,6 +599,18 @@ class Progress(object):
                 % self.timeout
             )
             raise Timeout
+
+        # report to GUI if requested
+        if self.gui_callback is not None and self.total:
+            try:
+                percent = int(self.position * 100 // self.total)
+                try:
+                    self.gui_callback(percent)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
         if time.time() - self.started >= self.delay:
             self._say_if_terminal(
                 "%d%% (%d out of %d %s)"
@@ -584,7 +647,12 @@ def best_diff(img1, img2, opts):
     xr = abs(w1 - w2) + 1
     yr = abs(h1 - h2) + 1
 
-    p = Progress(xr * yr, timeout=opts.timeout)
+    p = Progress(
+        xr * yr,
+        timeout=opts.timeout,
+        cancel_event=getattr(opts, "cancel_event", None),
+        gui_callback=getattr(opts, "gui_progress_callback", None),
+    )
     for x in range(xr):
         if w1 > w2:
             x1, x2 = x, 0
@@ -681,7 +749,12 @@ def slow_highlight(img1, img2, opts):
     yr = abs(h1 - h2) + 1
 
     try:
-        p = Progress(xr * yr, timeout=opts.timeout)
+        p = Progress(
+            xr * yr,
+            timeout=opts.timeout,
+            cancel_event=getattr(opts, "cancel_event", None),
+            gui_callback=getattr(opts, "gui_progress_callback", None),
+        )
         max7 = ImageFilter.MaxFilter(7)
         off1_x = off1_y = 0
         off2_x = off2_y = 0
