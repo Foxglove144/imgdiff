@@ -115,12 +115,6 @@ def main(argv=None):
         " (range: 0..255, default %(default)s)",
     )
     parser.add_argument(
-        "--timeout",
-        type=float,
-        default=300.0,
-        help="skip highlighting if it takes too long" " (default: %(default)s seconds)",
-    )
-    parser.add_argument(
         "-t",
         "--diff-threshold",
         type=int,
@@ -519,7 +513,6 @@ class Progress(object):
         self,
         total,
         delay=1.0,
-        timeout=10.0,
         what="possible alignments",
         cancel_event=None,
         gui_callback=None,
@@ -538,7 +531,6 @@ class Progress(object):
         self.what = what
         self.position = 0
         self.shown = False
-        self.timeout = timeout
         self.stream = sys.stderr
         # some environments may not have isatty
         try:
@@ -593,12 +585,6 @@ class Progress(object):
             raise Timeout
 
         self.position += 1
-        if self.timeout and time.time() - self.started > self.timeout:
-            self._say(
-                "Highlighting takes too long: timed out after %.0f seconds"
-                % self.timeout
-            )
-            raise Timeout
 
         # report to GUI if requested
         if self.gui_callback is not None and self.total:
@@ -649,7 +635,6 @@ def best_diff(img1, img2, opts):
 
     p = Progress(
         xr * yr,
-        timeout=opts.timeout,
         cancel_event=getattr(opts, "cancel_event", None),
         gui_callback=getattr(opts, "gui_progress_callback", None),
     )
@@ -751,7 +736,6 @@ def slow_highlight(img1, img2, opts):
     try:
         p = Progress(
             xr * yr,
-            timeout=opts.timeout,
             cancel_event=getattr(opts, "cancel_event", None),
             gui_callback=getattr(opts, "gui_progress_callback", None),
         )

@@ -47,7 +47,6 @@ class Options:
         self.highlight = False
         self.smart_highlight = True
         self.opacity = 64
-        self.timeout = 300.0
         self.diff_threshold = 20
         self.orientation = "auto"
         self.bgcolor = (255, 255, 255, 255)
