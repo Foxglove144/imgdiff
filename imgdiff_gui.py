@@ -4,6 +4,13 @@ import threading
 import os
 import sys
 from PIL import Image, ImageTk
+
+try:
+    # ImageGrab works on Windows for clipboard image access
+    from PIL import ImageGrab
+except Exception:
+    ImageGrab = None
+import tempfile
 import imgdiff
 
 try:
@@ -98,6 +105,9 @@ class ImgDiffGUI:
         ttk.Button(f1, text="Browse...", command=lambda: self.browse_file(1)).pack(
             fill=tk.X
         )
+        ttk.Button(f1, text="Paste", command=lambda: self.paste_from_clipboard(1)).pack(
+            fill=tk.X, pady=(2, 0)
+        )
 
         # Swap button area
         swap_frame = ttk.Frame(files_frame)
@@ -119,6 +129,9 @@ class ImgDiffGUI:
         self.entry2.pack(fill=tk.X, pady=(5, 2))
         ttk.Button(f2, text="Browse...", command=lambda: self.browse_file(2)).pack(
             fill=tk.X
+        )
+        ttk.Button(f2, text="Paste", command=lambda: self.paste_from_clipboard(2)).pack(
+            fill=tk.X, pady=(2, 0)
         )
 
         # Options
@@ -231,6 +244,7 @@ class ImgDiffGUI:
             self.set_file(target, filename)
 
     def set_file(self, target, filename):
+        # Accept either a filesystem path or an Image object path saved to temp
         if target == 1:
             self.file1_path.set(filename)
             self.update_preview(1, filename)
@@ -240,7 +254,11 @@ class ImgDiffGUI:
 
     def update_preview(self, target, filename):
         try:
-            img = Image.open(filename)
+            # filename may be a path or an Image object
+            if hasattr(filename, "read") or hasattr(filename, "mode"):
+                img = Image.open(filename)
+            else:
+                img = Image.open(filename)
             width, height = img.size
             resolution = f"{width} x {height}"
             img.thumbnail((350, 350))
@@ -272,6 +290,53 @@ class ImgDiffGUI:
         ]:
             widget.drop_target_register(DND_FILES)
             widget.dnd_bind("<<Drop>>", lambda e, t=target: self.on_drop(e, t))
+
+    def paste_from_clipboard(self, target):
+        """Paste an image from the system clipboard into the target slot.
+
+        Saves the clipboard image to a temporary PNG file and sets it as the
+        selected file so the rest of the UI code can handle it normally.
+        """
+        if ImageGrab is None:
+            messagebox.showerror(
+                "Clipboard Unavailable",
+                "Clipboard image support is not available on this platform.",
+            )
+            return
+
+        try:
+            cb = ImageGrab.grabclipboard()
+        except Exception as e:
+            messagebox.showerror("Clipboard Error", f"Failed to access clipboard: {e}")
+            return
+
+        if cb is None:
+            messagebox.showinfo("No Image", "No image data found in the clipboard.")
+            return
+
+        # If clipboard gives a filename list, use first file
+        if isinstance(cb, list) and cb:
+            path = cb[0]
+            if os.path.isfile(path):
+                self.set_file(target, path)
+                return
+
+        # If clipboard gives an Image object, save to a temp file
+        if hasattr(cb, "save"):
+            try:
+                tf = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                tf.close()
+                cb.save(tf.name, format="PNG")
+                self.set_file(target, tf.name)
+                return
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save clipboard image: {e}")
+                return
+
+        messagebox.showinfo(
+            "Unsupported Clipboard",
+            "Clipboard does not contain an image or supported file list.",
+        )
 
     def parse_drop_files(self, data):
         # Use tk splitlist to handle Tcl list formatting (braces for spaces)
