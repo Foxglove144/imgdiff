@@ -540,6 +540,17 @@ class Progress(object):
         self.cancel_event = cancel_event
         self.gui_callback = gui_callback
 
+    def _format_eta(self, seconds):
+        """Format seconds into a human-readable string like 1h 23m or 45s."""
+        seconds = int(seconds)
+        if seconds < 60:
+            return f"{seconds}s"
+        minutes, seconds = divmod(seconds, 60)
+        if minutes < 60:
+            return f"{minutes}m {seconds}s"
+        hours, minutes = divmod(minutes, 60)
+        return f"{hours}h {minutes}m"
+
     def _say_if_terminal(self, msg):
         if self.isatty:
             self.stream.write("\r")
@@ -597,16 +608,21 @@ class Progress(object):
             except Exception:
                 pass
 
-        if time.time() - self.started >= self.delay:
-            self._say_if_terminal(
-                "%d%% (%d out of %d %s)"
-                % (
-                    self.position * 100 // self.total,
-                    self.position,
-                    self.total,
-                    self.what,
-                )
-            )
+        now = time.time()
+        if now - self.started >= self.delay:
+            percent = self.position * 100 // self.total
+            msg = f"{percent}% ({self.position} out of {self.total} {self.what})"
+
+            # Add ETA calculation
+            elapsed = now - self.started
+            # Only show ETA after a few seconds to get a stable estimate
+            if self.position > 0 and elapsed > 2.0:
+                time_per_item = elapsed / self.position
+                remaining_items = self.total - self.position
+                eta = remaining_items * time_per_item
+                msg += f" ETA: {self._format_eta(eta)}"
+
+            self._say_if_terminal(msg)
         if self.position == self.total:
             self.done()
 
