@@ -161,6 +161,14 @@ class ImgDiffGUI:
             side=tk.LEFT, padx=10
         )
 
+        # Concise feature readout label: shows brief explanation of highlight modes
+        self.feature_info_label = ttk.Label(
+            opts_frame, text="", wraplength=700, justify=tk.LEFT
+        )
+        self.feature_info_label.grid(
+            row=3, column=0, columnspan=6, sticky=tk.W, pady=(5, 0)
+        )
+
         # --- Sliders ---
         ttk.Label(opts_frame, text="Opacity:").grid(
             row=1, column=0, sticky=tk.W, padx=(0, 5)
@@ -364,10 +372,31 @@ class ImgDiffGUI:
     def on_smart_change(self):
         if self.smart_highlight.get():
             self.highlight.set(False)
+        self.update_feature_info()
 
     def on_simple_change(self):
         if self.highlight.get():
             self.smart_highlight.set(False)
+        self.update_feature_info()
+
+    def update_feature_info(self):
+        """Update the readout explaining the selected highlight mode."""
+        try:
+            if self.smart_highlight.get():
+                text = (
+                    "Finds similar areas across different alignments "
+                    "(better for insertions/shifts). More thorough but slower."
+                )
+            elif self.highlight.get():
+                text = (
+                    "Finds a single best alignment and highlights "
+                    "pixel differences (faster, simpler)."
+                )
+            else:
+                text = "No highlighting: images are shown without difference overlays."
+            self.feature_info_label.config(text=text)
+        except Exception:
+            pass
 
     def on_opacity_change(self, value):
         val = float(value)
